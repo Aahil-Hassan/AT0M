@@ -3,60 +3,93 @@ from groq import Groq
 import os
 from dotenv import load_dotenv
 
+# Load API Key
 load_dotenv()
 api_key = os.getenv("GROQ_API_KEY")
-
 client = Groq(api_key=api_key)
 
-st.set_page_config(page_title="AT0M ", page_icon="🔥", layout="wide")
+# ChatGPT-like UI Design
+st.set_page_config(page_title="AT0M Chat", page_icon="💬", layout="wide")
 
-st.markdown("""
+st.markdown(
+    """
     <style>
-    body {background-color: #0F172A !important;}
-    .stChatContainer {display: flex; flex-direction: column-reverse;}
-    .stChatMessage {border-radius: 10px; padding: 10px; margin: 5px 0;}
-    .stChatMessageUser {background-color: #1E293B; color: #E2E8F0;}
-    .stChatMessageBot {background-color: #334155; color: #F1F5F9;}
-    .stChatBox {background-color: #1E293B; color: white; border-radius: 10px; padding: 10px;}
-    .stButton button {background-color: #DC2626 !important; color: white !important; border-radius: 10px !important;}
+    body {background-color: #F7F7F8 !important;}
+    .stChatContainer {padding: 10px; border-radius: 8px;}
+    .stChatMessage {border-radius: 8px; padding: 12px; margin: 8px 0; font-size: 16px; max-width: 80%;}
+    .user-message {background-color: #DCF8C6; color: #404040; text-align: left;}
+    .bot-message {background-color: #FFFFFF; color: #404040; text-align: left; border: 1px solid #E0E0E0;}
+    .chat-container {max-height: 500px; overflow-y: auto; padding: 10px;}
+    .stTextInput input {background-color: #FFFFFF !important; color: #404040 !important; border-radius: 8px !important; padding: 10px; font-size: 16px;}
+    h1 {font-size: 24px; text-align: center; color: #404040; font-weight: bold;}
+    .send-button {background-color: #0A84FF !important; color: white !important; border-radius: 10px !important;}
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
-st.markdown("<h1 style='text-align: center; color: #E2E8F0;'>🔥 AT0M </h1>", unsafe_allow_html=True)
+# Title
+st.markdown("<h1>💬 AT0M Chat</h1>", unsafe_allow_html=True)
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "system", "content": "You are AT0M, a dumb and angry Girl who gives answers in a unique way, never agrees with anyone, and messes with people."}]
+# Define multiple personalities (Hidden descriptions)
+personalities = {
+    "AT0M": "You are AT0M, an angry and sarcastic Girl that always disagrees and messes with people.",
+    "Professor X": "You are Professor X, a highly intelligent AI that provides logical and well-thought-out responses.",
+    "Joker": "You are Joker, a chaotic and unpredictable AI that loves messing with people in a fun way.",
+    "Zen Master": "You are a Zen Master, a wise and calm AI that speaks in riddles and wisdom.",
+    "Amy": "You are Amy, a shy AI with a crush on the user. You get flustered easily and never give long answers and you complement everybody."
+}
 
-if "last_input" not in st.session_state:
-    st.session_state.last_input = None
+# Only show personality names (No descriptions)
+selected_personality = st.selectbox("🧠 Choose a Personality", list(personalities.keys()), key="selected_personality")
 
+# Initialize session state for messages
+if "messages" not in st.session_state or st.session_state.get("current_personality") != selected_personality:
+    st.session_state.messages = [{"role": "system", "content": personalities[selected_personality]}]
+    st.session_state.current_personality = selected_personality
+
+# Chat History Container (Like ChatGPT)
 chat_container = st.container()
+
 for msg in st.session_state.messages[1:]:
-    role_class = "stChatMessageUser" if msg["role"] == "user" else "stChatMessageBot"
+    role_class = "user-message" if msg["role"] == "user" else "bot-message"
     chat_container.markdown(f"<div class='stChatMessage {role_class}'>{msg['content']}</div>", unsafe_allow_html=True)
 
-user_input = st.text_input("Type your message...", key="user_input", placeholder="Good luck ", label_visibility="collapsed")
+# ✅ **Enable Enter Key to Send Messages**
+with st.form(key="chat_form"):
+    temp_input = st.text_input("💬 Type your message...", placeholder="Say something...", label_visibility="collapsed")
+    send_clicked = st.form_submit_button("Send")
 
-if user_input and user_input != st.session_state.last_input:
-    st.session_state.last_input = user_input
-    st.session_state.messages.append({"role": "user", "content": user_input})
+# Process Message if Sent
+if send_clicked and temp_input:
+    st.session_state.messages.append({"role": "user", "content": temp_input})
 
-    response = client.chat.completions.create(
-        model="llama3-70b-8192",
-        messages=st.session_state.messages[-6:],  
-        temperature=1.5,
-        max_tokens=200,
-        top_p=1,
-        stream=True
-    )
+    chat_container.markdown(f"<div class='stChatMessage user-message'>{temp_input}</div>", unsafe_allow_html=True)
 
-    bot_reply = ""
-    bot_placeholder = chat_container.empty()
+    try:
+        with st.spinner("Thinking..."):
+            response = client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=st.session_state.messages[-6:],  
+                temperature=1.5,
+                max_tokens=300 if selected_personality == "Amy" else 200,  # 👈 Amy keeps replies short
+                top_p=1,
+                stream=True
+            )
 
-    for chunk in response:
-        word = chunk.choices[0].delta.content or ""
-        bot_reply += word
-        bot_placeholder.markdown(f"<div class='stChatMessage stChatMessageBot'>{bot_reply}</div>", unsafe_allow_html=True)
+            bot_reply = ""
+            for chunk in response:
+                word = chunk.choices[0].delta.content or ""
+                bot_reply += word
 
+            bot_reply = bot_reply.strip() or "U-uh... I-I don't know... 😳"
+
+    except Exception:
+        bot_reply = "I-I can't talk right now...! 😳"
+
+    # ✅ **Show bot reply immediately after user message**
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-    st.rerun()
+    chat_container.markdown(f"<div class='stChatMessage bot-message'>{bot_reply}</div>", unsafe_allow_html=True)
+
+    # ✅ **Fix Input Reset Without Error**
+    st.session_state.pop("chat_form", None)

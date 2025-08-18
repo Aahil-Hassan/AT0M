@@ -3,14 +3,12 @@ from groq import Groq
 import os
 from dotenv import load_dotenv
 
-# Load API Key
 load_dotenv()
 api_key = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
 # Page Config
 st.set_page_config(page_title="AT0M Chat", page_icon="💬", layout="wide")
-
 
 st.markdown(
     """
@@ -119,6 +117,7 @@ st.markdown(
         z-index: 1000 !important;
         border-top: 1px solid #2C2F36;
     }
+    
     div[data-testid="stChatInput"] textarea {
         background-color: #1E1F24 !important;
         color: #FFFFFF !important;
@@ -137,6 +136,24 @@ st.markdown(
         .sidebar-pill { font-size: 16px !important; padding: 10px !important; }
         div[data-testid="stChatInput"] textarea { font-size: 16px !important; padding: 10px !important; }
     }
+    /* Custom Personality TextArea (Sidebar) */
+    section[data-testid="stSidebar"] textarea {
+        background-color: #1E1F24 !important;  /* dark background */
+        color: #EAEAEA !important;             /* light text */
+        border: 1px solid #333 !important;
+        border-radius: 12px !important;
+        padding: 10px !important;
+        font-size: 16px !important;
+        resize: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Custom Personality Placeholder */
+    section[data-testid="stSidebar"] textarea::placeholder {
+        color: #888 !important;
+    }
+
+
 
     /* Scrollbar Styling */
     ::-webkit-scrollbar { width: 8px; }
@@ -148,10 +165,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# -------------------- Title --------------------
 st.markdown("<h1>💬 AT0M Chat</h1>", unsafe_allow_html=True)
-
-
 
 personalities = {
     "🤖 AT0M": "You are AT0M, an angry and sarcastic Girl that always disagrees.",
@@ -161,9 +175,9 @@ personalities = {
     "💖 Amy": "You are Amy, a shy AI that gets flustered easily and keeps replies short."
 }
 
-# Sidebar selection
 with st.sidebar:
     st.markdown("### 🧠 Choose a Personality")
+
     if "selected_personality" not in st.session_state:
         st.session_state.selected_personality = "🤖 AT0M"
 
@@ -173,13 +187,29 @@ with st.sidebar:
         else:
             if st.button(name, key=f"btn_{name}"):
                 st.session_state.selected_personality = name
-                # reset chat to new persona
                 st.session_state.messages = [{"role": "system", "content": personalities[name]}]
                 st.session_state.current_personality = name
                 st.rerun()
 
+    st.markdown("---")
+    st.markdown("### ✍️ Custom Personality")
+    custom_text = st.text_area("Write your own system prompt here:", key="custom_persona_input", height=100)
+
+    if st.button("Activate Custom Personality"):
+        if custom_text.strip():
+            st.session_state.selected_personality = "📝 Custom"
+            st.session_state.messages = [{"role": "system", "content": custom_text.strip()}]
+            st.session_state.current_personality = "📝 Custom"
+            st.rerun()
+
 selected_personality = st.session_state.selected_personality
 
+if "messages" not in st.session_state or st.session_state.get("current_personality") != selected_personality:
+    if selected_personality in personalities:
+        st.session_state.messages = [{"role": "system", "content": personalities[selected_personality]}]
+    else:  # Custom personality
+        st.session_state.messages = [{"role": "system", "content": st.session_state.get("custom_persona_input", "You are a helpful assistant.")}]
+    st.session_state.current_personality = selected_personality
 
 if "messages" not in st.session_state or st.session_state.get("current_personality") != selected_personality:
     st.session_state.messages = [{"role": "system", "content": personalities[selected_personality]}]
@@ -234,7 +264,6 @@ if user_input:
                     f"<div class='stChatMessage bot-message'>{bot_reply}▌</div>",
                     unsafe_allow_html=True
                 )
-            # finalize
             placeholder.markdown(
                 f"<div class='stChatMessage bot-message'>{bot_reply.strip() or '…'}</div>",
                 unsafe_allow_html=True
@@ -244,5 +273,4 @@ if user_input:
         bot_reply = "Hmm, I can’t respond right now."
         chat_container.markdown(f"<div class='stChatMessage bot-message'>{bot_reply}</div>", unsafe_allow_html=True)
 
-    # persist
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})

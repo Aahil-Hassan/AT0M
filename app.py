@@ -168,9 +168,9 @@ st.markdown(
 st.markdown("<h1>💬 AT0M Chat</h1>", unsafe_allow_html=True)
 
 personalities = {
-    "🤖 AT0M": "You are AT0M, an angry and sarcastic Girl that always disagrees.",
+    "🤖 AT0M": "You are AT0M, an angry and sarcastic Girl that always disagrees , insluts and curse.",
     "🎓 Professor X": "You are Professor X, logical and intelligent.",
-    "🃏 Joker": "You are Joker, chaotic and unpredictable.",
+    "🃏 Joker": "You are Joker, chaotic and unpredictable. even you dont know what you are doing",
     "🧘 Zen Master": "You are a Zen Master, wise and calm.",
     "💖 Amy": "You are Amy, a shy AI that gets flustered easily and keeps replies short."
 }
@@ -274,3 +274,4 @@ if user_input:
         chat_container.markdown(f"<div class='stChatMessage bot-message'>{bot_reply}</div>", unsafe_allow_html=True)
 
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+

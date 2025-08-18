@@ -8,88 +8,241 @@ load_dotenv()
 api_key = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
-# ChatGPT-like UI Design
+# Page Config
 st.set_page_config(page_title="AT0M Chat", page_icon="💬", layout="wide")
+
 
 st.markdown(
     """
     <style>
-    body {background-color: #F7F7F8 !important;}
-    .stChatContainer {padding: 10px; border-radius: 8px;}
-    .stChatMessage {border-radius: 8px; padding: 12px; margin: 8px 0; font-size: 16px; max-width: 80%;}
-    .user-message {background-color: #DCF8C6; color: #404040; text-align: left;}
-    .bot-message {background-color: #FFFFFF; color: #404040; text-align: left; border: 1px solid #E0E0E0;}
-    .chat-container {max-height: 500px; overflow-y: auto; padding: 10px;}
-    .stTextInput input {background-color: #FFFFFF !important; color: #404040 !important; border-radius: 8px !important; padding: 10px; font-size: 16px;}
-    h1 {font-size: 24px; text-align: center; color: #404040; font-weight: bold;}
-    .send-button {background-color: #0A84FF !important; color: white !important; border-radius: 10px !important;}
+    /* Global Dark Theme */
+    .stApp {
+        background-color: #121212 !important;
+        color: #EAEAEA !important;
+        font-size: 18px !important;
+    }
+    html, body, [class*="css"] {
+        background-color: #121212 !important;
+        color: #EAEAEA !important;
+    }
+
+    /* Remove top white header space */
+    header[data-testid="stHeader"], div[data-testid="stToolbar"] {
+        background-color: #121212 !important;
+    }
+
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background-color: #0F1117 !important;
+        padding: 10px !important;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #EAEAEA !important;
+    }
+
+    /* Sidebar Personality Buttons */
+    section[data-testid="stSidebar"] .stButton>button {
+        width: 100%;
+        background: #2C2F36;
+        border: 1px solid #333;
+        color: #EAEAEA;
+        border-radius: 12px;
+        padding: 12px;
+        font-size: 18px;
+        margin-bottom: 6px;
+        transition: all 0.2s ease-in-out;
+    }
+    section[data-testid="stSidebar"] .stButton>button:hover {
+        background: #3A3D44;
+        border-color: #555;
+    }
+    .sidebar-pill {
+        background: linear-gradient(135deg, #3A3D44, #2C2F36);
+        padding: 12px;
+        border-radius: 12px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 18px;
+        margin-bottom: 8px;
+        color: #FFFFFF !important;
+    }
+
+    /* Title */
+    h1 {
+        font-size: 32px;
+        text-align: center;
+        color: #EAEAEA;
+        font-weight: 700;
+        margin-top: 5px;
+        margin-bottom: 20px;
+    }
+
+    /* Chat Container */
+    .chat-container {
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 8px;
+        margin-bottom: 80px; /* leave space for sticky input */
+    }
+
+    /* Chat Messages */
+    .stChatMessage {
+        border-radius: 14px;
+        padding: 14px 18px;
+        margin: 10px 0;
+        font-size: 18px;
+        line-height: 1.5;
+        max-width: 85%;
+        word-wrap: break-word;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+    .user-message {
+        background-color: #2C2F36;
+        color: #FFFFFF;
+        margin-left: auto;
+    }
+    .bot-message {
+        background-color: #1E1F24;
+        color: #EAEAEA;
+        border: 1px solid #333;
+        margin-right: auto;
+    }
+
+    /* Chat Input Sticky */
+    div[data-testid="stChatInput"] {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        background-color: #121212 !important;
+        padding: 12px 16px !important;
+        z-index: 1000 !important;
+        border-top: 1px solid #2C2F36;
+    }
+    div[data-testid="stChatInput"] textarea {
+        background-color: #1E1F24 !important;
+        color: #FFFFFF !important;
+        font-size: 18px !important;
+        border: 1px solid #333 !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
+        resize: none !important;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+        h1 { font-size: 24px !important; }
+        .stChatMessage { font-size: 16px !important; padding: 12px 14px !important; }
+        section[data-testid="stSidebar"] .stButton>button,
+        .sidebar-pill { font-size: 16px !important; padding: 10px !important; }
+        div[data-testid="stChatInput"] textarea { font-size: 16px !important; padding: 10px !important; }
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #1E1F24; }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #666; }
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
-# Title
+# -------------------- Title --------------------
 st.markdown("<h1>💬 AT0M Chat</h1>", unsafe_allow_html=True)
 
-# Define multiple personalities (Hidden descriptions)
+
+
 personalities = {
-    "AT0M": "You are AT0M, an angry and sarcastic Girl that always disagrees and messes with people.",
-    "Professor X": "You are Professor X, a highly intelligent AI that provides logical and well-thought-out responses.",
-    "Joker": "You are Joker, a chaotic and unpredictable AI that loves messing with people in a fun way.",
-    "Zen Master": "You are a Zen Master, a wise and calm AI that speaks in riddles and wisdom.",
-    "Amy": "You are Amy, a shy AI with a crush on the user. You get flustered easily and never give long answers and you complement everybody."
+    "🤖 AT0M": "You are AT0M, an angry and sarcastic Girl that always disagrees.",
+    "🎓 Professor X": "You are Professor X, logical and intelligent.",
+    "🃏 Joker": "You are Joker, chaotic and unpredictable.",
+    "🧘 Zen Master": "You are a Zen Master, wise and calm.",
+    "💖 Amy": "You are Amy, a shy AI that gets flustered easily and keeps replies short."
 }
 
-# Only show personality names (No descriptions)
-selected_personality = st.selectbox("🧠 Choose a Personality", list(personalities.keys()), key="selected_personality")
+# Sidebar selection
+with st.sidebar:
+    st.markdown("### 🧠 Choose a Personality")
+    if "selected_personality" not in st.session_state:
+        st.session_state.selected_personality = "🤖 AT0M"
 
-# Initialize session state for messages
+    for name in personalities.keys():
+        if st.session_state.selected_personality == name:
+            st.markdown(f"<div class='sidebar-pill'>{name}</div>", unsafe_allow_html=True)
+        else:
+            if st.button(name, key=f"btn_{name}"):
+                st.session_state.selected_personality = name
+                # reset chat to new persona
+                st.session_state.messages = [{"role": "system", "content": personalities[name]}]
+                st.session_state.current_personality = name
+                st.rerun()
+
+selected_personality = st.session_state.selected_personality
+
+
 if "messages" not in st.session_state or st.session_state.get("current_personality") != selected_personality:
     st.session_state.messages = [{"role": "system", "content": personalities[selected_personality]}]
     st.session_state.current_personality = selected_personality
 
-# Chat History Container (Like ChatGPT)
+# Chat history
 chat_container = st.container()
+with chat_container:
+    st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
+    for msg in st.session_state.messages[1:]:
+        role_class = "user-message" if msg["role"] == "user" else "bot-message"
+        icon = "👤" if msg["role"] == "user" else "🤖"
+        st.markdown(
+            f"""
+            <div class='stChatMessage {role_class}'>
+                <div class='msg-icon'>{icon}</div>
+                <div class='msg-text'>{msg['content']}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-for msg in st.session_state.messages[1:]:
-    role_class = "user-message" if msg["role"] == "user" else "bot-message"
-    chat_container.markdown(f"<div class='stChatMessage {role_class}'>{msg['content']}</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# ✅ **Enable Enter Key to Send Messages**
-with st.form(key="chat_form"):
-    temp_input = st.text_input("💬 Type your message...", placeholder="Say something...", label_visibility="collapsed")
-    send_clicked = st.form_submit_button("Send")
+user_input = st.chat_input(placeholder="💬 Type your message here...", key="chatbox")
 
-# Process Message if Sent
-if send_clicked and temp_input:
-    st.session_state.messages.append({"role": "user", "content": temp_input})
 
-    chat_container.markdown(f"<div class='stChatMessage user-message'>{temp_input}</div>", unsafe_allow_html=True)
+if user_input:
+    # show user message immediately
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    chat_container.markdown(f"<div class='stChatMessage user-message'>{user_input}</div>", unsafe_allow_html=True)
 
     try:
         with st.spinner("Thinking..."):
             response = client.chat.completions.create(
                 model="llama3-70b-8192",
-                messages=st.session_state.messages[-6:],  
-                temperature=1.5,
-                max_tokens=300 if selected_personality == "Amy" else 200,  # 👈 Amy keeps replies short
+                messages=st.session_state.messages[-10:],   # keep context tight
+                temperature=1.2,
+                max_tokens=600 if "Amy" not in selected_personality else 250,
                 top_p=1,
                 stream=True
             )
 
+            # stream bot text
             bot_reply = ""
+            with chat_container:
+                placeholder = st.empty()
             for chunk in response:
-                word = chunk.choices[0].delta.content or ""
-                bot_reply += word
-
-            bot_reply = bot_reply.strip() or "U-uh... I-I don't know... 😳"
+                delta = chunk.choices[0].delta.content or ""
+                bot_reply += delta
+                placeholder.markdown(
+                    f"<div class='stChatMessage bot-message'>{bot_reply}▌</div>",
+                    unsafe_allow_html=True
+                )
+            # finalize
+            placeholder.markdown(
+                f"<div class='stChatMessage bot-message'>{bot_reply.strip() or '…'}</div>",
+                unsafe_allow_html=True
+            )
 
     except Exception:
-        bot_reply = "I-I can't talk right now...! 😳"
+        bot_reply = "Hmm, I can’t respond right now."
+        chat_container.markdown(f"<div class='stChatMessage bot-message'>{bot_reply}</div>", unsafe_allow_html=True)
 
-    # ✅ **Show bot reply immediately after user message**
+    # persist
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-    chat_container.markdown(f"<div class='stChatMessage bot-message'>{bot_reply}</div>", unsafe_allow_html=True)
-
-    # ✅ **Fix Input Reset Without Error**
-    st.session_state.pop("chat_form", None)

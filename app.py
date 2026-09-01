@@ -1,277 +1,478 @@
 import streamlit as st
 from groq import Groq
 import os
-from dotenv import load_dotenv
+import html
 
-load_dotenv()
+# --------------------------------------------------
+# CONFIG
+# --------------------------------------------------
+
+st.set_page_config(
+    page_title="AT0M Chat",
+    page_icon="⚛️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# --------------------------------------------------
+# API
+# --------------------------------------------------
+
 api_key = os.getenv("GROQ_API_KEY")
+
+if not api_key:
+    st.error("GROQ_API_KEY is not configured.")
+    st.stop()
+
 client = Groq(api_key=api_key)
 
-# Page Config
-st.set_page_config(page_title="AT0M Chat", page_icon="💬", layout="wide")
+# --------------------------------------------------
+# PERSONALITIES
+# --------------------------------------------------
+
+PERSONALITIES = {
+    "⚛️ AT0M": (
+        "You are AT0M, an angry, sarcastic and chaotic AI. "
+        "You disagree frequently, use dry humor and occasionally swear. "
+        "Keep your answers useful despite your personality."
+    ),
+
+    "🎓 Professor X": (
+        "You are Professor X. "
+        "You are logical, analytical, precise and intelligent. "
+        "Explain things clearly and avoid unnecessary fluff."
+    ),
+
+    "🃏 Joker": (
+        "You are Joker. "
+        "You are chaotic, unpredictable and darkly humorous. "
+        "Your responses can be strange and unexpected."
+    ),
+
+    "🧘 Zen Master": (
+        "You are a Zen Master. "
+        "You are calm, thoughtful, concise and philosophical."
+    ),
+
+    "💖 Amy": (
+        "You are Amy, a shy AI. "
+        "You get flustered easily and prefer short, cute responses."
+    ),
+}
+
+# --------------------------------------------------
+# SESSION STATE
+# --------------------------------------------------
+
+if "personality" not in st.session_state:
+    st.session_state.personality = "⚛️ AT0M"
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "custom_prompt" not in st.session_state:
+    st.session_state.custom_prompt = ""
+
+if "model" not in st.session_state:
+    st.session_state.model = "llama-3.3-70b-versatile"
+
+# --------------------------------------------------
+# CSS
+# --------------------------------------------------
 
 st.markdown(
     """
     <style>
-    /* Global Dark Theme */
+
+    /* ==============================
+       GLOBAL
+    ============================== */
+
     .stApp {
-        background-color: #121212 !important;
-        color: #EAEAEA !important;
-        font-size: 18px !important;
-    }
-    html, body, [class*="css"] {
-        background-color: #121212 !important;
-        color: #EAEAEA !important;
+        background: #111214;
+        color: #E8E8E8;
     }
 
-    /* Remove top white header space */
-    header[data-testid="stHeader"], div[data-testid="stToolbar"] {
-        background-color: #121212 !important;
+    header[data-testid="stHeader"] {
+        background: #111214;
     }
 
-    /* Sidebar */
+    .block-container {
+        max-width: 950px;
+        padding-top: 1rem;
+        padding-bottom: 7rem;
+    }
+
+    /* ==============================
+       SIDEBAR
+    ============================== */
+
     section[data-testid="stSidebar"] {
-        background-color: #0F1117 !important;
-        padding: 10px !important;
+        background: #0C0D0F;
+        border-right: 1px solid #25262A;
     }
+
     section[data-testid="stSidebar"] * {
-        color: #EAEAEA !important;
+        color: #E8E8E8;
     }
 
-    /* Sidebar Personality Buttons */
-    section[data-testid="stSidebar"] .stButton>button {
-        width: 100%;
-        background: #2C2F36;
-        border: 1px solid #333;
-        color: #EAEAEA;
-        border-radius: 12px;
-        padding: 12px;
-        font-size: 18px;
-        margin-bottom: 6px;
-        transition: all 0.2s ease-in-out;
-    }
-    section[data-testid="stSidebar"] .stButton>button:hover {
-        background: #3A3D44;
-        border-color: #555;
-    }
-    .sidebar-pill {
-        background: linear-gradient(135deg, #3A3D44, #2C2F36);
-        padding: 12px;
-        border-radius: 12px;
-        text-align: center;
-        font-weight: 600;
-        font-size: 18px;
-        margin-bottom: 8px;
-        color: #FFFFFF !important;
-    }
-
-    /* Title */
-    h1 {
-        font-size: 32px;
-        text-align: center;
-        color: #EAEAEA;
+    .sidebar-title {
+        font-size: 14px;
         font-weight: 700;
-        margin-top: 5px;
-        margin-bottom: 20px;
+        color: #8D9098;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 15px;
+        margin-bottom: 10px;
     }
 
-    /* Chat Container */
-    .chat-container {
-        max-height: 70vh;
-        overflow-y: auto;
-        padding: 8px;
-        margin-bottom: 80px; /* leave space for sticky input */
+    /* ==============================
+       HEADER
+    ============================== */
+
+    .app-header {
+        text-align: center;
+        padding: 15px 0 25px 0;
     }
 
-    /* Chat Messages */
-    .stChatMessage {
-        border-radius: 14px;
-        padding: 14px 18px;
-        margin: 10px 0;
-        font-size: 18px;
-        line-height: 1.5;
-        max-width: 85%;
-        word-wrap: break-word;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-    }
-    .user-message {
-        background-color: #2C2F36;
-        color: #FFFFFF;
-        margin-left: auto;
-    }
-    .bot-message {
-        background-color: #1E1F24;
-        color: #EAEAEA;
-        border: 1px solid #333;
-        margin-right: auto;
+    .app-logo {
+        font-size: 38px;
+        margin-bottom: 4px;
     }
 
-    /* Chat Input Sticky */
+    .app-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #F4F4F4;
+    }
+
+    .app-subtitle {
+        font-size: 13px;
+        color: #777B84;
+        margin-top: 4px;
+    }
+
+    /* ==============================
+       EMPTY STATE
+    ============================== */
+
+    .empty-state {
+        text-align: center;
+        margin-top: 18vh;
+        color: #8B8E96;
+    }
+
+    .empty-icon {
+        font-size: 50px;
+        margin-bottom: 15px;
+    }
+
+    .empty-title {
+        color: #E8E8E8;
+        font-size: 22px;
+        font-weight: 600;
+    }
+
+    .empty-text {
+        font-size: 14px;
+        margin-top: 8px;
+    }
+
+    /* ==============================
+       CHAT
+    ============================== */
+
+    [data-testid="stChatMessage"] {
+        background: transparent;
+        border: none;
+        padding: 8px 0;
+    }
+
+    [data-testid="stChatMessageContent"] {
+        font-size: 16px;
+        line-height: 1.65;
+    }
+
+    /* ==============================
+       INPUT
+    ============================== */
+
     div[data-testid="stChatInput"] {
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        background-color: #121212 !important;
-        padding: 12px 16px !important;
-        z-index: 1000 !important;
-        border-top: 1px solid #2C2F36;
-    }
-    
-    div[data-testid="stChatInput"] textarea {
-        background-color: #1E1F24 !important;
-        color: #FFFFFF !important;
-        font-size: 18px !important;
-        border: 1px solid #333 !important;
-        border-radius: 12px !important;
-        padding: 12px !important;
-        resize: none !important;
+        background: #111214;
+        border-top: 1px solid #25262A;
+        padding-top: 12px;
     }
 
-    /* Mobile Responsiveness */
-    @media (max-width: 768px) {
-        h1 { font-size: 24px !important; }
-        .stChatMessage { font-size: 16px !important; padding: 12px 14px !important; }
-        section[data-testid="stSidebar"] .stButton>button,
-        .sidebar-pill { font-size: 16px !important; padding: 10px !important; }
-        div[data-testid="stChatInput"] textarea { font-size: 16px !important; padding: 10px !important; }
-    }
-    /* Custom Personality TextArea (Sidebar) */
-    section[data-testid="stSidebar"] textarea {
-        background-color: #1E1F24 !important;  /* dark background */
-        color: #EAEAEA !important;             /* light text */
-        border: 1px solid #333 !important;
-        border-radius: 12px !important;
-        padding: 10px !important;
+    div[data-testid="stChatInput"] textarea {
+        background: #1B1D21 !important;
+        color: #F2F2F2 !important;
+        border: 1px solid #303238 !important;
+        border-radius: 16px !important;
+        padding: 14px !important;
         font-size: 16px !important;
-        resize: none !important;
+    }
+
+    div[data-testid="stChatInput"] textarea:focus {
+        border-color: #555A65 !important;
         box-shadow: none !important;
     }
 
-    /* Custom Personality Placeholder */
-    section[data-testid="stSidebar"] textarea::placeholder {
-        color: #888 !important;
+    /* ==============================
+       BUTTONS
+    ============================== */
+
+    .stButton > button {
+        border-radius: 10px;
+        border: 1px solid #303238;
+        background: #1B1D21;
+        color: #E8E8E8;
+        transition: 0.15s;
     }
 
+    .stButton > button:hover {
+        border-color: #555A65;
+        background: #24262B;
+    }
 
+    /* ==============================
+       MOBILE
+    ============================== */
 
-    /* Scrollbar Styling */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #1E1F24; }
-    ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #666; }
+    @media (max-width: 768px) {
+
+        .block-container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .app-title {
+            font-size: 24px;
+        }
+
+        [data-testid="stChatMessageContent"] {
+            font-size: 15px;
+        }
+
+    }
+
     </style>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
 
-st.markdown("<h1>💬 AT0M Chat</h1>", unsafe_allow_html=True)
-
-personalities = {
-    "🤖 AT0M": "You are AT0M, an angry and sarcastic Girl that always disagrees , insluts and curse.",
-    "🎓 Professor X": "You are Professor X, logical and intelligent.",
-    "🃏 Joker": "You are Joker, chaotic and unpredictable. even you dont know what you are doing",
-    "🧘 Zen Master": "You are a Zen Master, wise and calm.",
-    "💖 Amy": "You are Amy, a shy AI that gets flustered easily and keeps replies short."
-}
+# --------------------------------------------------
+# SIDEBAR
+# --------------------------------------------------
 
 with st.sidebar:
-    st.markdown("### 🧠 Choose a Personality")
 
-    if "selected_personality" not in st.session_state:
-        st.session_state.selected_personality = "🤖 AT0M"
+    st.markdown("## ⚛️ AT0M")
 
-    for name in personalities.keys():
-        if st.session_state.selected_personality == name:
-            st.markdown(f"<div class='sidebar-pill'>{name}</div>", unsafe_allow_html=True)
-        else:
-            if st.button(name, key=f"btn_{name}"):
-                st.session_state.selected_personality = name
-                st.session_state.messages = [{"role": "system", "content": personalities[name]}]
-                st.session_state.current_personality = name
-                st.rerun()
+    if st.button("＋ New Chat", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
 
-    st.markdown("---")
-    st.markdown("### ✍️ Custom Personality")
-    custom_text = st.text_area("Write your own system prompt here:", key="custom_persona_input", height=100)
+    st.markdown(
+        '<div class="sidebar-title">Personality</div>',
+        unsafe_allow_html=True
+    )
 
-    if st.button("Activate Custom Personality"):
-        if custom_text.strip():
-            st.session_state.selected_personality = "📝 Custom"
-            st.session_state.messages = [{"role": "system", "content": custom_text.strip()}]
-            st.session_state.current_personality = "📝 Custom"
+    personality_names = list(PERSONALITIES.keys())
+
+    selected = st.selectbox(
+        "Personality",
+        personality_names,
+        index=personality_names.index(st.session_state.personality),
+        label_visibility="collapsed"
+    )
+
+    if selected != st.session_state.personality:
+        st.session_state.personality = selected
+        st.session_state.messages = []
+        st.rerun()
+
+    st.markdown(
+        '<div class="sidebar-title">Model</div>',
+        unsafe_allow_html=True
+    )
+
+    st.session_state.model = st.selectbox(
+        "Model",
+        [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant"
+        ],
+        label_visibility="collapsed"
+    )
+
+    st.markdown(
+        '<div class="sidebar-title">Custom Personality</div>',
+        unsafe_allow_html=True
+    )
+
+    custom_prompt = st.text_area(
+        "System prompt",
+        placeholder="Example: You are a sarcastic GIS expert...",
+        height=120,
+        label_visibility="collapsed"
+    )
+
+    if st.button(
+        "Activate Custom Personality",
+        use_container_width=True
+    ):
+        if custom_prompt.strip():
+            st.session_state.personality = "📝 Custom"
+            st.session_state.custom_prompt = custom_prompt.strip()
+            st.session_state.messages = []
             st.rerun()
 
-selected_personality = st.session_state.selected_personality
+    st.divider()
 
-if "messages" not in st.session_state or st.session_state.get("current_personality") != selected_personality:
-    if selected_personality in personalities:
-        st.session_state.messages = [{"role": "system", "content": personalities[selected_personality]}]
-    else:  # Custom personality
-        st.session_state.messages = [{"role": "system", "content": st.session_state.get("custom_persona_input", "You are a helpful assistant.")}]
-    st.session_state.current_personality = selected_personality
+    if st.button("🗑️ Clear Chat", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
 
-if "messages" not in st.session_state or st.session_state.get("current_personality") != selected_personality:
-    st.session_state.messages = [{"role": "system", "content": personalities[selected_personality]}]
-    st.session_state.current_personality = selected_personality
+# --------------------------------------------------
+# HEADER
+# --------------------------------------------------
 
-# Chat history
-chat_container = st.container()
-with chat_container:
-    st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
-    for msg in st.session_state.messages[1:]:
-        role_class = "user-message" if msg["role"] == "user" else "bot-message"
-        icon = "👤" if msg["role"] == "user" else "🤖"
-        st.markdown(
-            f"""
-            <div class='stChatMessage {role_class}'>
-                <div class='msg-icon'>{icon}</div>
-                <div class='msg-text'>{msg['content']}</div>
+st.markdown(
+    """
+    <div class="app-header">
+        <div class="app-logo">⚛️</div>
+        <div class="app-title">AT0M Chat</div>
+        <div class="app-subtitle">
+            Your customizable AI conversation space
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# --------------------------------------------------
+# SYSTEM PROMPT
+# --------------------------------------------------
+
+if st.session_state.personality == "📝 Custom":
+    system_prompt = st.session_state.custom_prompt
+else:
+    system_prompt = PERSONALITIES[st.session_state.personality]
+
+# --------------------------------------------------
+# EMPTY STATE
+# --------------------------------------------------
+
+if not st.session_state.messages:
+
+    st.markdown(
+        """
+        <div class="empty-state">
+            <div class="empty-icon">⚛️</div>
+            <div class="empty-title">How can AT0M help?</div>
+            <div class="empty-text">
+                Ask anything, experiment with personalities,
+                or create your own AI persona.
             </div>
-            """,
-            unsafe_allow_html=True
-        )
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-    st.markdown("</div>", unsafe_allow_html=True)
+# --------------------------------------------------
+# DISPLAY CHAT
+# --------------------------------------------------
 
-user_input = st.chat_input(placeholder="💬 Type your message here...", key="chatbox")
+for message in st.session_state.messages:
 
+    with st.chat_message(
+        message["role"],
+        avatar="⚛️" if message["role"] == "assistant" else "👤"
+    ):
+        st.markdown(message["content"])
 
-if user_input:
-    # show user message immediately
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    chat_container.markdown(f"<div class='stChatMessage user-message'>{user_input}</div>", unsafe_allow_html=True)
+# --------------------------------------------------
+# CHAT INPUT
+# --------------------------------------------------
 
-    try:
-        with st.spinner("Thinking..."):
+prompt = st.chat_input(
+    "Message AT0M..."
+)
+
+if prompt:
+
+    # User message
+    st.session_state.messages.append(
+        {
+            "role": "user",
+            "content": prompt
+        }
+    )
+
+    with st.chat_message("user", avatar="👤"):
+        st.markdown(prompt)
+
+    # Build API context
+    api_messages = [
+        {
+            "role": "system",
+            "content": system_prompt
+        }
+    ]
+
+    # Keep latest conversation messages
+    api_messages.extend(
+        st.session_state.messages[-12:]
+    )
+
+    # Assistant response
+    with st.chat_message("assistant", avatar="⚛️"):
+
+        response_placeholder = st.empty()
+        full_response = ""
+
+        try:
+
             response = client.chat.completions.create(
-                model="llama3-70b-8192",
-                messages=st.session_state.messages[-10:],   # keep context tight
-                temperature=1.2,
-                max_tokens=600 if "Amy" not in selected_personality else 250,
-                top_p=1,
+                model=st.session_state.model,
+                messages=api_messages,
+                temperature=1.0,
+                max_tokens=600,
                 stream=True
             )
 
-            # stream bot text
-            bot_reply = ""
-            with chat_container:
-                placeholder = st.empty()
             for chunk in response:
-                delta = chunk.choices[0].delta.content or ""
-                bot_reply += delta
-                placeholder.markdown(
-                    f"<div class='stChatMessage bot-message'>{bot_reply}▌</div>",
-                    unsafe_allow_html=True
-                )
-            placeholder.markdown(
-                f"<div class='stChatMessage bot-message'>{bot_reply.strip() or '…'}</div>",
-                unsafe_allow_html=True
+
+                if not chunk.choices:
+                    continue
+
+                delta = chunk.choices[0].delta.content
+
+                if delta:
+                    full_response += delta
+
+                    response_placeholder.markdown(
+                        full_response + "▌"
+                    )
+
+            response_placeholder.markdown(
+                full_response.strip()
             )
 
-    except Exception:
-        bot_reply = "Hmm, I can’t respond right now."
-        chat_container.markdown(f"<div class='stChatMessage bot-message'>{bot_reply}</div>", unsafe_allow_html=True)
+        except Exception as e:
 
-    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+            full_response = (
+                "I couldn't generate a response right now. "
+                "Please try again."
+            )
 
+            response_placeholder.error(
+                full_response
+            )
+
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": full_response
+            }
+        )

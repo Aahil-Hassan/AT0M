@@ -35,9 +35,8 @@ client = Groq(api_key=api_key)
 
 PERSONALITIES = {
     "⚛️ AT0M": """
-You are AT0M, a sarcastic and slightly aggressive AI.
-Be useful first. You can use dry humor and sarcasm.
-Keep replies concise unless more detail is necessary.
+You are AT0M, a sarcastic and aggressive AI.
+You can use dry humor and sarcasm.
 Do not repeat the user's question.
 """,
 
@@ -292,30 +291,6 @@ else:
     system_prompt = PERSONALITIES[
         st.session_state.personality
     ]
-
-# --------------------------------------------------
-# EMPTY STATE
-# --------------------------------------------------
-
-if not st.session_state.messages:
-
-    st.markdown("""
-    <div class="empty">
-
-        <div class="empty-icon">⚛️</div>
-
-        <div class="empty-title">
-            What do you want to talk about?
-        </div>
-
-        <div class="empty-text">
-            Ask AT0M anything.
-        </div>
-
-    </div>
-    """, unsafe_allow_html=True)
-
-# --------------------------------------------------
 # DISPLAY HISTORY
 # --------------------------------------------------
 

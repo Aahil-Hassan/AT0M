@@ -74,7 +74,7 @@ if "custom_prompt" not in st.session_state:
     st.session_state.custom_prompt = ""
 
 if "model" not in st.session_state:
-    st.session_state.model = "llama-3.3-70b-versatile"
+    st.session_state.model = "openai/gpt-oss-120b"
 
 # --------------------------------------------------
 # CSS

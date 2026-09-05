@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 from groq import Groq
 
@@ -434,4 +433,3 @@ if prompt:
                 "role": "assistant",
                 "content": answer.strip()
             })
-```
